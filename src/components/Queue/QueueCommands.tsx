@@ -30,16 +30,54 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
   useEffect(() => {
     // Listen for global recording toggle shortcut
     const handleToggleRecording = () => {
-      handleRecordClick()
+      // Use current state values instead of calling handleRecordClick
+      setIsRecording(currentIsRecording => {
+        if (!currentIsRecording) {
+          // Start recording logic
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            const recorder = new MediaRecorder(stream)
+            recorder.ondataavailable = (e) => chunks.current.push(e.data)
+            recorder.onstop = async () => {
+              const blob = new Blob(chunks.current, { type: chunks.current[0]?.type || 'audio/webm' })
+              chunks.current = []
+              const reader = new FileReader()
+              reader.onloadend = async () => {
+                const base64Data = (reader.result as string).split(',')[1]
+                try {
+                  const result = await window.electronAPI.analyzeAudioFromBase64(base64Data, blob.type)
+                  setAudioResult(result.text)
+                } catch (err) {
+                  setAudioResult('Audio analysis failed.')
+                }
+              }
+              reader.readAsDataURL(blob)
+            }
+            setMediaRecorder(recorder)
+            recorder.start()
+          }).catch(err => {
+            setAudioResult('Could not start recording.')
+          })
+          return true
+        } else {
+          // Stop recording logic
+          setMediaRecorder(currentRecorder => {
+            if (currentRecorder && currentRecorder.state !== 'inactive') {
+              currentRecorder.stop()
+            }
+            return null
+          })
+          return false
+        }
+      })
     }
 
-    window.electronAPI?.onToggleRecording?.(handleToggleRecording)
+    const cleanup = window.electronAPI?.onToggleRecording?.(handleToggleRecording)
     
     // Cleanup listener on unmount
     return () => {
-      // Note: we don't have a cleanup function from electronAPI, so we rely on component unmount
+      cleanup?.()
     }
-  }, [isRecording, mediaRecorder])
+  }, [])
 
   const handleMouseEnter = () => {
     setIsTooltipVisible(true)
@@ -79,7 +117,9 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
       }
     } else {
       // Stop recording
-      mediaRecorder?.stop()
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop()
+      }
       setIsRecording(false)
       setMediaRecorder(null)
     }
