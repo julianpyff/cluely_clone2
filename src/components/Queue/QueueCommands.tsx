@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { IoLogOutOutline } from "react-icons/io5"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface QueueCommandsProps {
   onTooltipVisibilityChange: (visible: boolean, height: number) => void
@@ -323,8 +325,28 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
       </div>
       {/* Audio Result Display */}
       {audioResult && (
-        <div className="mt-2 p-2 bg-white/10 rounded text-white text-xs max-w-md">
-          <span className="font-semibold">Audio Result:</span> {audioResult}
+        <div className="mt-2 p-3 bg-white/10 rounded-lg text-white text-xs max-w-md">
+          <span className="font-semibold text-blue-300">Audio Result:</span>
+          <div className="mt-2 prose prose-sm prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({ children }) => <h1 className="text-sm font-bold mb-2 text-white">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-xs font-semibold mb-1 text-white">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-xs font-medium mb-1 text-white">{children}</h3>,
+                p: ({ children }) => <p className="text-xs mb-2 text-gray-200 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="text-xs mb-2 pl-4 list-disc text-gray-200">{children}</ul>,
+                ol: ({ children }) => <ol className="text-xs mb-2 pl-4 list-decimal text-gray-200">{children}</ol>,
+                li: ({ children }) => <li className="mb-1">{children}</li>,
+                strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
+                code: ({ children }) => <code className="bg-gray-800 px-1 py-0.5 rounded text-xs text-gray-200">{children}</code>,
+                blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-600 pl-2 italic text-gray-300">{children}</blockquote>
+              }}
+            >
+              {audioResult}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
