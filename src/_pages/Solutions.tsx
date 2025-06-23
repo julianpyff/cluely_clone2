@@ -77,7 +77,8 @@ const SolutionSection = ({
             margin: 0,
             padding: "1rem",
             whiteSpace: "pre-wrap",
-            wordBreak: "break-all"
+            wordBreak: "break-all",
+            overflow: "visible"
           }}
           wrapLongLines={true}
         >
@@ -329,11 +330,28 @@ const Solutions: React.FC<SolutionsProps> = ({ setView }) => {
 
         console.log({ solution: data.solution })
 
+        // Handle suggested_responses formatting
+        let formattedCode = data.solution.code;
+        if (data.solution.suggested_responses && Array.isArray(data.solution.suggested_responses)) {
+          // If code shows "See suggested responses below." or "N/A", replace with formatted responses
+          if (formattedCode === "See suggested responses below." || formattedCode === "N/A") {
+            formattedCode = data.solution.suggested_responses
+              .map((response, index) => `${index + 1}. ${response}`)
+              .join('\n\n');
+          } else {
+            // Otherwise append suggested responses to existing code
+            formattedCode += '\n\n## Suggested Actions:\n\n' + 
+              data.solution.suggested_responses
+                .map((response, index) => `${index + 1}. ${response}`)
+                .join('\n\n');
+          }
+        }
+
         const solutionData = {
-          code: data.solution.code,
-          thoughts: data.solution.thoughts,
-          time_complexity: data.solution.time_complexity,
-          space_complexity: data.solution.space_complexity
+          code: formattedCode,
+          thoughts: data.solution.thoughts || data.solution.reasoning ? [data.solution.reasoning] : [],
+          time_complexity: data.solution.time_complexity || "N/A",
+          space_complexity: data.solution.space_complexity || "N/A"
         }
 
         queryClient.setQueryData(["solution"], solutionData)
@@ -543,7 +561,9 @@ const Solutions: React.FC<SolutionsProps> = ({ setView }) => {
                           content={solutionData}
                           isLoading={!solutionData}
                         />
-                        {problemStatementData?.output_format?.subtype !== "voice" && (
+                        {problemStatementData?.output_format?.subtype !== "voice" && 
+                         timeComplexityData && spaceComplexityData && 
+                         timeComplexityData !== "N/A" && spaceComplexityData !== "N/A" && (
                           <ComplexitySection
                             timeComplexity={timeComplexityData}
                             spaceComplexity={spaceComplexityData}

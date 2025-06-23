@@ -17,6 +17,7 @@ export interface ElectronAPI {
   onSolutionSuccess: (callback: (data: any) => void) => () => void
   onUnauthorized: (callback: () => void) => () => void
   onDebugError: (callback: (error: string) => void) => () => void
+  onToggleRecording: (callback: () => void) => () => void
   takeScreenshot: () => Promise<void>
   moveWindowLeft: () => Promise<void>
   moveWindowRight: () => Promise<void>

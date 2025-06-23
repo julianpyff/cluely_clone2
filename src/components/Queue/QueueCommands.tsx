@@ -25,6 +25,20 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     onTooltipVisibilityChange(isTooltipVisible, tooltipHeight)
   }, [isTooltipVisible])
 
+  useEffect(() => {
+    // Listen for global recording toggle shortcut
+    const handleToggleRecording = () => {
+      handleRecordClick()
+    }
+
+    window.electronAPI?.onToggleRecording?.(handleToggleRecording)
+    
+    // Cleanup listener on unmount
+    return () => {
+      // Note: we don't have a cleanup function from electronAPI, so we rely on component unmount
+    }
+  }, [isRecording, mediaRecorder])
+
   const handleMouseEnter = () => {
     setIsTooltipVisible(true)
   }
@@ -115,19 +129,43 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           </div>
         )}
 
-        {/* Voice Recording Button */}
+        {/* Screenshot + Solve Command */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] leading-none">Quick Solve</span>
+          <div className="flex gap-1">
+            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+              ⌘
+            </button>
+            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+              ⇧
+            </button>
+            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+              ↵
+            </button>
+          </div>
+        </div>
+
+        {/* Voice Recording */}
         <div className="flex items-center gap-2">
           <button
-            className={`bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/70 flex items-center gap-1 ${isRecording ? 'bg-red-500/70 hover:bg-red-500/90' : ''}`}
+            className={`text-[11px] leading-none flex items-center gap-1 ${isRecording ? 'text-red-400' : 'text-white/70'}`}
             onClick={handleRecordClick}
             type="button"
           >
             {isRecording ? (
               <span className="animate-pulse">● Stop Recording</span>
             ) : (
-              <span>🎤 Record Voice</span>
+              <span>🎤 Record</span>
             )}
           </button>
+          <div className="flex gap-1">
+            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+              ⌘
+            </button>
+            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+              R
+            </button>
+          </div>
         </div>
 
         {/* Question mark with tooltip */}
@@ -202,6 +240,66 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                       </div>
                       <p className="text-[10px] leading-relaxed text-white/70 truncate">
                         Generate a solution based on the current problem.
+                      </p>
+                    </div>
+
+                    {/* Quick Solve Command */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="truncate">Quick Solve</span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⌘
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⇧
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ↵
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-white/70 truncate">
+                        Take screenshot and solve in one step.
+                      </p>
+                    </div>
+
+                    {/* Voice Recording Command */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="truncate">Toggle Recording</span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⌘
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            R
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-white/70 truncate">
+                        Start or stop voice recording for audio input.
+                      </p>
+                    </div>
+
+                    {/* Reset Command */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="truncate">Reset</span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⌘
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⇧
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            R
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-white/70 truncate">
+                        Clear all screenshots and reset the view.
                       </p>
                     </div>
                   </div>

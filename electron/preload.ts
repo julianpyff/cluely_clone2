@@ -25,6 +25,7 @@ interface ElectronAPI {
 
   onUnauthorized: (callback: () => void) => () => void
   onDebugError: (callback: (error: string) => void) => () => void
+  onToggleRecording: (callback: () => void) => () => void
   takeScreenshot: () => Promise<void>
   moveWindowLeft: () => Promise<void>
   moveWindowRight: () => Promise<void>
@@ -158,6 +159,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on(PROCESSING_EVENTS.UNAUTHORIZED, subscription)
     return () => {
       ipcRenderer.removeListener(PROCESSING_EVENTS.UNAUTHORIZED, subscription)
+    }
+  },
+  onToggleRecording: (callback: () => void) => {
+    const subscription = () => callback()
+    ipcRenderer.on("toggle-recording", subscription)
+    return () => {
+      ipcRenderer.removeListener("toggle-recording", subscription)
     }
   },
   moveWindowLeft: () => ipcRenderer.invoke("move-window-left"),

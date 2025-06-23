@@ -24,6 +24,30 @@ class ProcessingHelper {
         }
         this.llmHelper = new LLMHelper_1.LLMHelper(apiKey);
     }
+    async screenshotAndSolve() {
+        const mainWindow = this.appState.getMainWindow();
+        if (!mainWindow)
+            return;
+        try {
+            console.log("Taking screenshot and solving immediately...");
+            // Take screenshot first
+            const screenshotPath = await this.appState.takeScreenshot();
+            const preview = await this.appState.getImagePreview(screenshotPath);
+            // Notify that screenshot was taken
+            mainWindow.webContents.send("screenshot-taken", {
+                path: screenshotPath,
+                preview
+            });
+            // Wait a brief moment to ensure UI updates
+            await new Promise(resolve => setTimeout(resolve, 100));
+            // Now process the screenshots (including the one we just took)
+            await this.processScreenshots();
+        }
+        catch (error) {
+            console.error("Error in screenshotAndSolve:", error);
+            mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR, error.message);
+        }
+    }
     async processScreenshots() {
         const mainWindow = this.appState.getMainWindow();
         if (!mainWindow)
@@ -53,23 +77,22 @@ class ProcessingHelper {
                     return;
                 }
             }
-            // NEW: Handle screenshot as plain text (like audio)
+            // Handle screenshot with proper LLM processing
             mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.INITIAL_START);
             this.appState.setView("solutions");
             this.currentProcessingAbortController = new AbortController();
             try {
-                const imageResult = await this.llmHelper.analyzeImageFile(lastPath);
-                const problemInfo = {
-                    problem_statement: imageResult.text,
-                    input_format: { description: "Generated from screenshot", parameters: [] },
-                    output_format: { description: "Generated from screenshot", type: "string", subtype: "text" },
-                    complexity: { time: "N/A", space: "N/A" },
-                    test_cases: [],
-                    validation_type: "manual",
-                    difficulty: "custom"
-                };
+                // Step 1: Extract problem information from the image
+                const problemInfo = await this.llmHelper.extractProblemFromImages([lastPath]);
+                console.log("[ProcessingHelper] Problem extracted:", problemInfo);
+                // Send problem extracted event
                 mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.PROBLEM_EXTRACTED, problemInfo);
                 this.appState.setProblemInfo(problemInfo);
+                // Step 2: Generate solution with suggested responses
+                const solutionResult = await this.llmHelper.generateSolution(problemInfo);
+                console.log("[ProcessingHelper] Solution generated:", solutionResult);
+                // Send solution success event
+                mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.SOLUTION_SUCCESS, solutionResult);
             }
             catch (error) {
                 console.error("Image processing error:", error);

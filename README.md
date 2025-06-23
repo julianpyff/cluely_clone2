@@ -14,7 +14,7 @@ A desktop application to help you cheat on everything.
 1. Clone the repository:
 ```bash
 git clone [repository-url]
-cd interview-coder
+cd free-cluely
 ```
 
 2. Install dependencies:
@@ -53,7 +53,7 @@ The built app will be in the `release` folder.
 
 1. **Closing the App**: 
    - Press `Cmd + Q` (Mac) or `Ctrl + Q` (Windows/Linux) to quit
-   - Or use Activity Monitor/Task Manager to close `Interview Coder`
+   - Or use Activity Monitor/Task Manager to close `Free Cluely`
    - The X button currently doesn't work (known issue)
 
 2. **If the app doesn't start**:
@@ -69,7 +69,10 @@ The built app will be in the `release` folder.
 3. **Keyboard Shortcuts**:
    - `Cmd/Ctrl + B`: Toggle window visibility
    - `Cmd/Ctrl + H`: Take screenshot
-   - 'Cmd/Enter': Get solution
+   - `Cmd/Enter`: Get solution (from existing screenshots)
+   - `Cmd/Shift + Enter`: **Quick Solve** - Take screenshot and solve in one step
+   - `Cmd/Ctrl + R`: Start/stop voice recording
+   - `Cmd/Ctrl + Shift + R`: Reset (clear screenshots and view)
    - `Cmd/Ctrl + Arrow Keys`: Move window
 
 ### Troubleshooting

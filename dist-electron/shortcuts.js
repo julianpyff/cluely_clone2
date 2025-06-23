@@ -28,8 +28,22 @@ class ShortcutsHelper {
         electron_1.globalShortcut.register("CommandOrControl+Enter", async () => {
             await this.appState.processingHelper.processScreenshots();
         });
+        // One-step screenshot and solve
+        electron_1.globalShortcut.register("CommandOrControl+Shift+Enter", async () => {
+            console.log("Command + Shift + Enter pressed. Taking screenshot and solving...");
+            await this.appState.processingHelper.screenshotAndSolve();
+        });
+        // Recording toggle shortcut
         electron_1.globalShortcut.register("CommandOrControl+R", () => {
-            console.log("Command + R pressed. Canceling requests and resetting queues...");
+            console.log("Command + R pressed. Toggling recording...");
+            const mainWindow = this.appState.getMainWindow();
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send("toggle-recording");
+            }
+        });
+        // Reset shortcut (moved to Cmd+Shift+R)
+        electron_1.globalShortcut.register("CommandOrControl+Shift+R", () => {
+            console.log("Command + Shift + R pressed. Canceling requests and resetting queues...");
             // Cancel ongoing API requests
             this.appState.processingHelper.cancelOngoingRequests();
             // Clear both screenshot queues

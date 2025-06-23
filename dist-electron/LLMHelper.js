@@ -27,7 +27,48 @@ class LLMHelper {
         text = text.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '');
         // Remove any leading/trailing whitespace
         text = text.trim();
-        return text;
+        // Try to fix common JSON formatting issues
+        try {
+            // First, try to parse as-is
+            JSON.parse(text);
+            return text;
+        }
+        catch (e) {
+            console.log("[LLMHelper] Initial JSON parse failed, attempting to fix formatting...");
+            // Try to extract JSON from the response if it's wrapped in other text
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                text = jsonMatch[0];
+            }
+            // Fix common JSON issues
+            // Fix trailing commas in arrays and objects
+            text = text.replace(/,(\s*[}\]])/g, '$1');
+            // Fix missing commas between array elements (basic fix)
+            text = text.replace(/"\s*\n\s*"/g, '",\n"');
+            // Fix incomplete arrays or objects
+            let openBraces = 0;
+            let openBrackets = 0;
+            for (let i = 0; i < text.length; i++) {
+                if (text[i] === '{')
+                    openBraces++;
+                if (text[i] === '}')
+                    openBraces--;
+                if (text[i] === '[')
+                    openBrackets++;
+                if (text[i] === ']')
+                    openBrackets--;
+            }
+            // Add missing closing brackets/braces
+            while (openBrackets > 0) {
+                text += ']';
+                openBrackets--;
+            }
+            while (openBraces > 0) {
+                text += '}';
+                openBraces--;
+            }
+            return text;
+        }
     }
     async extractProblemFromImages(imagePaths) {
         try {
@@ -52,25 +93,43 @@ class LLMHelper {
         const prompt = `${this.systemPrompt}\n\nGiven this problem or situation:\n${JSON.stringify(problemInfo, null, 2)}\n\nPlease provide your response in the following JSON format:\n{
   "solution": {
     "code": "The code or main answer here.",
+    "thoughts": ["Analysis point 1", "Analysis point 2", "Analysis point 3"],
+    "time_complexity": "Time complexity analysis (use 'N/A' if not applicable)",
+    "space_complexity": "Space complexity analysis (use 'N/A' if not applicable)",
     "problem_statement": "Restate the problem or situation.",
     "context": "Relevant background/context.",
     "suggested_responses": ["First possible answer or action", "Second possible answer or action", "..."],
     "reasoning": "Explanation of why these suggestions are appropriate."
   }
-}\nImportant: Return ONLY the JSON object, without any markdown formatting or code blocks.`;
+}\nImportant: Return ONLY the JSON object, without any markdown formatting or code blocks. For non-coding problems, set time_complexity and space_complexity to "N/A".`;
         console.log("[LLMHelper] Calling Gemini LLM for solution...");
         try {
             const result = await this.model.generateContent(prompt);
             console.log("[LLMHelper] Gemini LLM returned result.");
             const response = await result.response;
-            const text = this.cleanJsonResponse(response.text());
+            const rawText = response.text();
+            console.log("[LLMHelper] Raw response text:", rawText.substring(0, 500) + "...");
+            const text = this.cleanJsonResponse(rawText);
             const parsed = JSON.parse(text);
             console.log("[LLMHelper] Parsed LLM response:", parsed);
             return parsed;
         }
         catch (error) {
             console.error("[LLMHelper] Error in generateSolution:", error);
-            throw error;
+            // Fallback response if JSON parsing fails
+            return {
+                solution: {
+                    code: "Sorry, there was an error processing the response. Please try again.",
+                    problem_statement: "Error occurred during response processing",
+                    context: "The AI response could not be parsed correctly",
+                    suggested_responses: [
+                        "Try taking a new screenshot",
+                        "Check your internet connection",
+                        "Restart the application if the problem persists"
+                    ],
+                    reasoning: "This is a fallback response due to parsing errors."
+                }
+            };
         }
     }
     async debugSolutionWithImages(problemInfo, currentCode, debugImagePaths) {
