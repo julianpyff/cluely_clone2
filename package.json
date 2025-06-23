@@ -1,5 +1,5 @@
 {
-  "name": "interview-coder",
+  "name": "jarvis",
   "version": "1.0.0",
   "main": "./dist-electron/main.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "watch": "tsc -p electron/tsconfig.json --watch"
   },
   "build": {
-    "appId": "com.electron.interview-coder",
+    "appId": "com.electron.jarvis",
     "productName": "Interview Coder",
     "files": [
       "dist/**/*",
@@ -49,7 +49,7 @@
       {
         "provider": "github",
         "owner": "ibttf",
-        "repo": "interview-coder-frontend"
+        "repo": "jarvis-frontend"
       }
     ]
   },
