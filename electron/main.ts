@@ -1,4 +1,6 @@
 import { app, BrowserWindow } from "electron"
+import { spawn, ChildProcessWithoutNullStreams } from "child_process" // Added spawn
+import path from "path" // Added path for script location
 import { initializeIpcHandlers } from "./ipcHandlers"
 import { WindowHelper } from "./WindowHelper"
 import { ScreenshotHelper } from "./ScreenshotHelper"
@@ -7,6 +9,7 @@ import { ProcessingHelper } from "./ProcessingHelper"
 
 export class AppState {
   private static instance: AppState | null = null
+  public pythonProcess: ChildProcessWithoutNullStreams | null = null // Added pythonProcess
 
   private windowHelper: WindowHelper
   private screenshotHelper: ScreenshotHelper
@@ -112,6 +115,115 @@ export class AppState {
     this.windowHelper.hideMainWindow()
   }
 
+  public getPythonProcess(): ChildProcessWithoutNullStreams | null {
+    return this.pythonProcess
+  }
+
+  public startPythonProcess(): void {
+    if (this.pythonProcess) {
+      console.log("Python process already running.")
+      return
+    }
+
+    // Determine the path to the script. This assumes the script is in 'python_core' relative to the app root.
+    // In a packaged app, paths might need adjustment (e.g., using app.getAppPath()).
+    const scriptPath = path.join(app.getAppPath(), "python_core", "agent_s_wrapper.py")
+    // For development, if electron/main.js is in dist-electron, and python_core is at root:
+    // const scriptPath = path.join(__dirname, "..", "..", "python_core", "agent_s_wrapper.py");
+    // Simplified for now, assuming execution from project root during dev:
+    const pythonExecutable = "python3" // Or could be a path to a venv python
+
+    console.log(`Spawning Python script: ${pythonExecutable} ${scriptPath}`)
+
+    this.pythonProcess = spawn(pythonExecutable, [
+      "-u", // Unbuffered stdout/stderr
+      scriptPath
+    ])
+
+    this.pythonProcess.stdout.on("data", (data: Buffer) => {
+      const rawMessages = data.toString().split('\n').filter(m => m.trim() !== "");
+      rawMessages.forEach(message => {
+        console.log(`[Python STDOUT Raw Line]: ${message}`);
+        try {
+          const jsonData = JSON.parse(message);
+          console.log("[Python JSON Parsed]:", jsonData);
+
+          // Check if this is an agent response meant for the chat UI
+          // The Python wrapper should structure its output consistently.
+          // For example, if jsonData has a specific type or flag indicating it's an agent response.
+          // For now, we'll assume any valid JSON from Python's stdout is an agent response.
+          // More specific filtering can be added if Python sends other types of JSON messages to stdout.
+          if (this.getMainWindow() && jsonData) {
+            // AGENT_EVENTS.AGENT_RESPONSE should be "agent-response"
+            this.getMainWindow()?.webContents.send("agent-response", jsonData);
+            console.log("[Electron->Renderer] Forwarded agent response:", jsonData);
+          }
+        } catch (e) {
+          // If it's not JSON, it might be a regular print/log from Python, not an agent message.
+          // The Python wrapper is configured to log to stdout as well, so we might get those here.
+          // We only want to forward structured JSON agent responses to the renderer.
+          // Logging non-JSON stdout is already handled by the initial console.log.
+          // No need for an error here unless we expect ONLY JSON.
+           console.log("[Python STDOUT Not JSON or for logging only]:", message.trim())
+        }
+      });
+    })
+
+    this.pythonProcess.stderr.on("data", (data: Buffer) => {
+      console.error(`[Python STDERR]: ${data.toString().trim()}`)
+    })
+
+    this.pythonProcess.on("spawn", () => {
+      console.log("Python process spawned successfully.")
+      // Send a test message
+      const testMessage = { type: "test_ping", data: "Hello from Electron!" , timestamp: Date.now() }
+      this.sendToPython(testMessage)
+    })
+
+    this.pythonProcess.on("error", (err) => {
+      console.error("Failed to start Python process:", err)
+      this.pythonProcess = null
+    })
+
+    this.pythonProcess.on("close", (code, signal) => {
+      console.log(
+        `Python process closed with code ${code} and signal ${signal}`
+      )
+      this.pythonProcess = null
+      // Optionally, try to restart or notify the user
+    })
+  }
+
+  public sendToPython(message: any): boolean {
+    if (this.pythonProcess && this.pythonProcess.stdin) {
+      try {
+        const jsonMessage = JSON.stringify(message) + "\n" // Add newline as a delimiter
+        this.pythonProcess.stdin.write(jsonMessage)
+        console.log(`[Electron->Python] Sent: ${jsonMessage.trim()}`)
+        return true
+      } catch (error) {
+        console.error("Error sending message to Python:", error)
+        console.error("Original message:", message)
+        return false
+      }
+    } else {
+      console.error("Python process not running or stdin not available.")
+      return false
+    }
+  }
+
+  public stopPythonProcess(): void {
+    if (this.pythonProcess) {
+      console.log("Stopping Python process...")
+      this.pythonProcess.kill() // Sends SIGTERM
+      this.pythonProcess = null
+    }
+  }
+
+  public hideMainWindow(): void {
+    this.windowHelper.hideMainWindow()
+  }
+
   public showMainWindow(): void {
     this.windowHelper.showMainWindow()
   }
@@ -196,14 +308,21 @@ async function initializeApp() {
   app.whenReady().then(() => {
     console.log("App is ready")
     appState.createWindow()
+    appState.startPythonProcess() // Start Python process
     // Register global shortcuts using ShortcutsHelper
     appState.shortcutsHelper.registerGlobalShortcuts()
   })
 
   app.on("activate", () => {
     console.log("App activated")
-    if (appState.getMainWindow() === null) {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (appState.getMainWindow() === null) { // Check if window is null before creating
       appState.createWindow()
+    } else if (appState.getMainWindow() && !appState.getMainWindow()?.isVisible()) {
+      // If window exists but is hidden (e.g. after Cmd+B), show it.
+      // This might be handled by toggleMainWindow better, depending on desired behavior.
+      appState.showMainWindow();
     }
   })
 
@@ -212,6 +331,10 @@ async function initializeApp() {
     if (process.platform !== "darwin") {
       app.quit()
     }
+  })
+
+  app.on("will-quit", () => {
+    appState.stopPythonProcess() // Ensure Python process is stopped on quit
   })
 
   app.dock?.hide() // Hide dock icon (optional)

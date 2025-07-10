@@ -30,9 +30,17 @@ interface ElectronAPI {
   moveWindowRight: () => Promise<void>
   analyzeAudioFromBase64: (data: string, mimeType: string) => Promise<{ text: string; timestamp: number }>
   analyzeAudioFile: (path: string) => Promise<{ text: string; timestamp: number }>
-  analyzeImageFile: (path: string) => Promise<void>
+  analyzeImageFile: (path: string) => Promise<void> // This was Promise<void>, maybe should return result?
   quitApp: () => Promise<void>
+
+  // Agent Chat IPC
+  sendUserMessageToAgent: (message: {type: string, payload: any}) => Promise<any>
+  onAgentResponse: (callback: (agentMessage: any) => void) => () => void
 }
+
+export const AGENT_EVENTS = {
+  AGENT_RESPONSE: "agent-response" // Define a constant for the event name
+} as const;
 
 export const PROCESSING_EVENTS = {
   //global states
@@ -165,5 +173,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   analyzeAudioFromBase64: (data: string, mimeType: string) => ipcRenderer.invoke("analyze-audio-base64", data, mimeType),
   analyzeAudioFile: (path: string) => ipcRenderer.invoke("analyze-audio-file", path),
   analyzeImageFile: (path: string) => ipcRenderer.invoke("analyze-image-file", path),
-  quitApp: () => ipcRenderer.invoke("quit-app")
+  quitApp: () => ipcRenderer.invoke("quit-app"),
+
+  // Agent Chat IPC implementation
+  sendUserMessageToAgent: (message: {type: string, payload: any}) =>
+    ipcRenderer.invoke("send-user-message-to-agent", message),
+
+  onAgentResponse: (callback: (agentMessage: any) => void) => {
+    const subscription = (_: any, agentMessage: any) => callback(agentMessage);
+    ipcRenderer.on(AGENT_EVENTS.AGENT_RESPONSE, subscription);
+    return () => {
+      ipcRenderer.removeListener(AGENT_EVENTS.AGENT_RESPONSE, subscription);
+    }
+  }
 } as ElectronAPI)

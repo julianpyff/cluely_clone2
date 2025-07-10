@@ -56,75 +56,54 @@ export class ProcessingHelper {
         }
       }
 
-      // NEW: Handle screenshot as plain text (like audio)
-      mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.INITIAL_START)
-      this.appState.setView("solutions")
-      this.currentProcessingAbortController = new AbortController()
-      try {
-        const imageResult = await this.llmHelper.analyzeImageFile(lastPath);
-        const problemInfo = {
-          problem_statement: imageResult.text,
-          input_format: { description: "Generated from screenshot", parameters: [] as any[] },
-          output_format: { description: "Generated from screenshot", type: "string", subtype: "text" },
-          complexity: { time: "N/A", space: "N/A" },
-          test_cases: [] as any[],
-          validation_type: "manual",
-          difficulty: "custom"
-        };
-        mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.PROBLEM_EXTRACTED, problemInfo);
-        this.appState.setProblemInfo(problemInfo);
-      } catch (error: any) {
-        console.error("Image processing error:", error)
-        mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR, error.message)
-      } finally {
-        this.currentProcessingAbortController = null
+      // NEW: Send screenshot to Agent-S via Python bridge
+      mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.INITIAL_START); // Indicate processing started
+      // No longer setting view to "solutions" here automatically, agent response will dictate UI changes.
+      // this.appState.setView("solutions")
+
+      const success = this.appState.sendToPython({
+        type: "process_screenshot",
+        payload: { image_path: lastPath }
+      });
+
+      if (!success) {
+        console.error("Failed to send screenshot to Python process from ProcessingHelper.");
+        mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR, "Failed to send screenshot to agent for processing.");
+      }
+      // The response from Agent-S will be handled by the stdout listener in main.ts
+      // and sent to the renderer via AGENT_EVENTS.AGENT_RESPONSE.
+      // The old problemInfo setting and PROBLEM_EXTRACTED event here are now superseded by agent's response.
+      return;
+
+    } else { // Corresponds to view === "solutions" (Debug mode in original app)
+      // This part is for the original app's "debug" functionality.
+      // For now, we'll simplify or bypass this, as Agent-S will handle its own "debugging" or iterative processing.
+      // Later, this could be a specific instruction to Agent-S.
+      console.log("ProcessingHelper: 'solutions' (debug) view screenshot processing via Agent-S is TBD.");
+      const extraScreenshotQueue = this.appState.getScreenshotHelper().getExtraScreenshotQueue();
+      if (extraScreenshotQueue.length > 0) {
+        const lastDebugImagePath = extraScreenshotQueue[extraScreenshotQueue.length - 1];
+        mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.DEBUG_START);
+
+        const success = this.appState.sendToPython({
+          type: "process_screenshot", // Could be a more specific type like "debug_with_screenshot"
+          payload: {
+            image_path: lastDebugImagePath,
+            context: "debug_mode", // Add more context if Agent-S needs it
+            problem_info: this.appState.getProblemInfo() // Send existing problem context
+          }
+        });
+
+        if (!success) {
+          console.error("Failed to send debug screenshot to Python process.");
+          mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.DEBUG_ERROR, "Failed to send debug image to agent.");
+        }
+        // Response handled by stdout listener.
+      } else {
+        console.log("No extra screenshots to process for debug view.");
+        mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.NO_SCREENSHOTS);
       }
       return;
-    } else {
-      // Debug mode
-      const extraScreenshotQueue = this.appState.getScreenshotHelper().getExtraScreenshotQueue()
-      if (extraScreenshotQueue.length === 0) {
-        console.log("No extra screenshots to process")
-        mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.NO_SCREENSHOTS)
-        return
-      }
-
-      mainWindow.webContents.send(this.appState.PROCESSING_EVENTS.DEBUG_START)
-      this.currentExtraProcessingAbortController = new AbortController()
-
-      try {
-        // Get problem info and current solution
-        const problemInfo = this.appState.getProblemInfo()
-        if (!problemInfo) {
-          throw new Error("No problem info available")
-        }
-
-        // Get current solution from state
-        const currentSolution = await this.llmHelper.generateSolution(problemInfo)
-        const currentCode = currentSolution.solution.code
-
-        // Debug the solution using vision model
-        const debugResult = await this.llmHelper.debugSolutionWithImages(
-          problemInfo,
-          currentCode,
-          extraScreenshotQueue
-        )
-
-        this.appState.setHasDebugged(true)
-        mainWindow.webContents.send(
-          this.appState.PROCESSING_EVENTS.DEBUG_SUCCESS,
-          debugResult
-        )
-
-      } catch (error: any) {
-        console.error("Debug processing error:", error)
-        mainWindow.webContents.send(
-          this.appState.PROCESSING_EVENTS.DEBUG_ERROR,
-          error.message
-        )
-      } finally {
-        this.currentExtraProcessingAbortController = null
-      }
     }
   }
 
@@ -143,13 +122,45 @@ export class ProcessingHelper {
   }
 
   public async processAudioBase64(data: string, mimeType: string) {
-    // Directly use LLMHelper to analyze inline base64 audio
-    return this.llmHelper.analyzeAudioFromBase64(data, mimeType);
+    // For now, keep direct LLMHelper call for audio, or route through Agent-S
+    // Route through Agent-S
+    const success = this.appState.sendToPython({
+      type: "process_audio_base64",
+      payload: { data, mimeType }
+    });
+    if (!success) {
+      console.error("Failed to send audio (base64) to Python process.");
+      // Communicate error back to renderer if there's a direct promise to fulfill
+      // For now, agent_response will handle async errors from Python.
+      // This function is async, so it should return a promise.
+      // The actual result will come via agent_response. This handler might need to change
+      // if a direct response is expected by the caller.
+      // For now, we'll assume the caller handles async response via AGENT_RESPONSE event.
+      throw new Error("Failed to send audio (base64) to agent for processing.");
+    }
+    // Placeholder: return a promise that resolves when AGENT_RESPONSE is received for this specific request.
+    // This is complex to implement here directly. The UI should rely on AGENT_RESPONSE event.
+    // For now, return a simple acknowledgement or rely on the UI listening to AGENT_RESPONSE.
+    console.log("Audio (base64) data sent to agent. Waiting for async response via AGENT_RESPONSE event.");
+    // This function's return type is Promise<{text: string, timestamp: number}>
+    // This will need to be refactored if we wait for a response from Python here.
+    // For now, let's return a dummy promise, actual data comes via AGENT_RESPONSE.
+    return Promise.resolve({text: "Audio (base64) sent to agent for processing.", timestamp: Date.now()});
   }
 
-  // Add audio file processing method
   public async processAudioFile(filePath: string) {
-    return this.llmHelper.analyzeAudioFile(filePath);
+    // Route through Agent-S
+     const success = this.appState.sendToPython({
+      type: "process_audio_file",
+      payload: { path: filePath }
+    });
+    if (!success) {
+      console.error("Failed to send audio file to Python process.");
+      throw new Error("Failed to send audio file to agent for processing.");
+    }
+    console.log("Audio file data sent to agent. Waiting for async response via AGENT_RESPONSE event.");
+    // Similar to above, return a dummy promise.
+    return Promise.resolve({text: "Audio file sent to agent for processing.", timestamp: Date.now()});
   }
 
   public getLLMHelper() {

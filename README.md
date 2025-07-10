@@ -11,24 +11,67 @@ A desktop application to help you cheat on everything.
 
 ### Installation Steps
 
-1. Clone the repository:
-```bash
-git clone [repository-url]
-cd interview-coder
-```
+1.  **Clone the Repository:**
+    ```bash
+    git clone [repository-url]
+    cd your-project-directory
+    ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+2.  **Install Node.js Dependencies:**
+    ```bash
+    npm install
+    ```
 
-3. Set up environment variables:
-   - Create a file named `.env` in the root folder
-   - Add your Gemini API key:
-   ```
-   GEMINI_API_KEY=your_api_key_here
-   ```
-   - Save the file
+3.  **Set up Python Environment (for Agent-S Backend):**
+    *   Ensure you have Python 3.9 or newer installed and available in your PATH.
+    *   Navigate to the `python_core` directory:
+        ```bash
+        cd python_core
+        ```
+    *   Create a virtual environment (recommended):
+        ```bash
+        python3 -m venv .venv
+        ```
+    *   Activate the virtual environment:
+        *   On macOS/Linux: `source .venv/bin/activate`
+        *   On Windows: `.venv\\Scripts\\activate`
+    *   Install Python dependencies:
+        ```bash
+        pip install -r requirements.txt
+        ```
+    *   Install Playwright browser binaries:
+        ```bash
+        playwright install --with-deps
+        ```
+    *   Deactivate the virtual environment when done (or keep it active if running Python scripts manually): `deactivate`
+    *   Return to the project root directory: `cd ..`
+
+4.  **Set up Environment Variables (API Keys):**
+    *   Create a file named `.env` in the **project root folder**.
+    *   Add your API keys. Agent-S will use these for its LLM interactions. The Python wrapper attempts to load these.
+        ```dotenv
+        # Required for Gemini (Google AI Studio) - User Provided
+        GOOGLE_API_KEY=your_google_ai_studio_api_key_here
+
+        # Optional: For Agent-S default/fallback models or other tools
+        # OPENAI_API_KEY=your_openai_api_key_here
+        # ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+        # You can also configure the primary LLM Agent-S tries to use:
+        # AGENT_S_ENGINE_TYPE="google" # or "openai", "anthropic"
+        # AGENT_S_MODEL="gemini-pro"  # or "gpt-4", "claude-2"
+        ```
+    *   The application's Electron side (originally "Interview Coder") also used `GEMINI_API_KEY`. For consistency, ensure `GOOGLE_API_KEY` is set for Agent-S, or update Agent-S configuration if it uses a different name for Gemini keys. The current Python wrapper uses `GOOGLE_API_KEY`.
+
+### Architecture Overview
+
+This application now integrates **Agent-S**, a powerful Python-based agentic framework, into the existing Electron/React ("Interview Coder") application.
+*   **Frontend:** Built with React (using Vite) running in the Electron renderer process. Provides the main UI, including the new agent chat interface.
+*   **Electron Main Process:** Handles windowing, system interactions (screenshots, shortcuts), and acts as a bridge to the Python backend.
+*   **Python Backend (`python_core`):**
+    *   Runs `agent_s_wrapper.py`, which hosts and manages the Agent-S instance.
+    *   Handles complex reasoning, planning, tool use (including Playwright for browser automation), and LLM interactions via Agent-S.
+    *   Communicates with the Electron main process via standard input/output (JSON messages).
 
 ### Running the App
 
@@ -75,10 +118,29 @@ The built app will be in the `release` folder.
 ### Troubleshooting
 
 If you see errors:
-1. Delete the `node_modules` folder
-2. Delete `package-lock.json`
-3. Run `npm install` again
-4. Try running the app again using Method 1
+1.  Delete the `node_modules` folder.
+2.  Delete `package-lock.json`.
+3.  Run `npm install` again.
+4.  Ensure the Python environment in `python_core` is set up correctly and dependencies are installed.
+5.  Check that your API keys in the `.env` file are correct and have the necessary permissions.
+6.  Try running the app again using Method 1.
+
+### Interacting with Agent-S
+
+The primary way to interact with the enhanced capabilities is through the new **Chat View** (accessible via `Cmd/Ctrl+Shift+C` or by setting it as the default view in `src/App.tsx` for development).
+
+*   **Natural Language Commands:** Type instructions in plain English. Agent-S will attempt to understand, plan, and execute them.
+    *   Example: "Plan a trip to Tokyo."
+    *   Example: "What's the weather like in London?" (Agent-S would need a weather tool/skill for this).
+*   **Screenshots:** The existing screenshot functionality (`Cmd/Ctrl+H`) can be used. After taking a screenshot, you can instruct Agent-S to analyze it, for example, by typing in the chat: "Analyze the last screenshot I took." (Note: The explicit command flow for this from UI to agent needs to be fully implemented; currently, screenshot processing is tied to the old "Get Solution" flow which sends it to Agent-S).
+*   **Playwright Browser Automation:**
+    *   Use the prefix `playwright:` followed by a JSON object defining the task.
+    *   Example: `playwright: {"action": "goto", "url": "https://www.simular.ai"}`
+    *   Example: `playwright: {"action": "get_title"}` (after navigating to a page)
+    *   Supported browsers for Playwright tasks can be specified in the JSON: `"browser": "firefox"` (defaults to "chromium").
+*   **Agent Feedback:**
+    *   **Thoughts & Plans:** For complex tasks, the agent may display its thought process and a to-do list in the chat.
+    *   **Status Updates:** The to-do list items may update their status as the agent works on them (e.g., "pending", "completed").
 
 ## Contribution
 
