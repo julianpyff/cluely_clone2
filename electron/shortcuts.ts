@@ -72,6 +72,12 @@ export class ShortcutsHelper {
       this.appState.moveWindowUp()
     })
 
+    // Quit application shortcut
+    globalShortcut.register("CommandOrControl+Q", () => {
+      console.log("Command/Ctrl + Q pressed. Quitting application.")
+      app.quit()
+    })
+
     globalShortcut.register("CommandOrControl+B", () => {
       this.appState.toggleMainWindow()
       // If window exists and we're showing it, bring it to front
