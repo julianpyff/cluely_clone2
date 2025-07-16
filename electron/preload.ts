@@ -31,6 +31,8 @@ interface ElectronAPI {
   analyzeAudioFromBase64: (data: string, mimeType: string) => Promise<{ text: string; timestamp: number }>
   analyzeAudioFile: (path: string) => Promise<{ text: string; timestamp: number }>
   analyzeImageFile: (path: string) => Promise<void>
+  toggleVisibility: () => Promise<boolean>
+  getVisibilityMode: () => Promise<boolean>
   quitApp: () => Promise<void>
 }
 
@@ -165,5 +167,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   analyzeAudioFromBase64: (data: string, mimeType: string) => ipcRenderer.invoke("analyze-audio-base64", data, mimeType),
   analyzeAudioFile: (path: string) => ipcRenderer.invoke("analyze-audio-file", path),
   analyzeImageFile: (path: string) => ipcRenderer.invoke("analyze-image-file", path),
+  toggleVisibility: () => ipcRenderer.invoke("toggle-visibility"),
+  getVisibilityMode: () => ipcRenderer.invoke("get-visibility-mode"),
   quitApp: () => ipcRenderer.invoke("quit-app")
 } as ElectronAPI)

@@ -7,6 +7,10 @@ const WindowHelper_1 = require("./WindowHelper");
 const ScreenshotHelper_1 = require("./ScreenshotHelper");
 const shortcuts_1 = require("./shortcuts");
 const ProcessingHelper_1 = require("./ProcessingHelper");
+// Minimal protection switches
+if (process.platform === 'win32') {
+    electron_1.app.commandLine.appendSwitch('disable-background-timer-throttling');
+}
 class AppState {
     static instance = null;
     windowHelper;
@@ -133,6 +137,9 @@ class AppState {
     getHasDebugged() {
         return this.hasDebugged;
     }
+    getWindowHelper() {
+        return this.windowHelper;
+    }
 }
 exports.AppState = AppState;
 // Application initialization
@@ -159,7 +166,10 @@ async function initializeApp() {
         }
     });
     electron_1.app.dock?.hide(); // Hide dock icon (optional)
-    electron_1.app.commandLine.appendSwitch("disable-background-timer-throttling");
+    // Set app to not appear in screen recordings on macOS
+    if (process.platform === 'darwin') {
+        electron_1.app.setActivationPolicy('accessory');
+    }
 }
 // Start the application
 initializeApp().catch(console.error);

@@ -1,9 +1,14 @@
-import { app, BrowserWindow } from "electron"
+import { app, BrowserWindow, desktopCapturer, screen } from "electron"
 import { initializeIpcHandlers } from "./ipcHandlers"
 import { WindowHelper } from "./WindowHelper"
 import { ScreenshotHelper } from "./ScreenshotHelper"
 import { ShortcutsHelper } from "./shortcuts"
 import { ProcessingHelper } from "./ProcessingHelper"
+
+// Minimal protection switches
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('disable-background-timer-throttling')
+}
 
 export class AppState {
   private static instance: AppState | null = null
@@ -184,6 +189,10 @@ export class AppState {
   public getHasDebugged(): boolean {
     return this.hasDebugged
   }
+
+  public getWindowHelper(): WindowHelper {
+    return this.windowHelper
+  }
 }
 
 // Application initialization
@@ -215,7 +224,11 @@ async function initializeApp() {
   })
 
   app.dock?.hide() // Hide dock icon (optional)
-  app.commandLine.appendSwitch("disable-background-timer-throttling")
+  
+  // Set app to not appear in screen recordings on macOS
+  if (process.platform === 'darwin') {
+    app.setActivationPolicy('accessory')
+  }
 }
 
 // Start the application

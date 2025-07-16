@@ -97,5 +97,12 @@ function initializeIpcHandlers(appState) {
     electron_1.ipcMain.handle("quit-app", () => {
         electron_1.app.quit();
     });
+    electron_1.ipcMain.handle("toggle-visibility", () => {
+        appState.getWindowHelper().toggleVisibility();
+        return appState.getWindowHelper().getVisibilityMode();
+    });
+    electron_1.ipcMain.handle("get-visibility-mode", () => {
+        return appState.getWindowHelper().getVisibilityMode();
+    });
 }
 //# sourceMappingURL=ipcHandlers.js.map

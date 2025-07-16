@@ -106,4 +106,13 @@ export function initializeIpcHandlers(appState: AppState): void {
   ipcMain.handle("quit-app", () => {
     app.quit()
   })
+  
+  ipcMain.handle("toggle-visibility", () => {
+    appState.getWindowHelper().toggleVisibility()
+    return appState.getWindowHelper().getVisibilityMode()
+  })
+  
+  ipcMain.handle("get-visibility-mode", () => {
+    return appState.getWindowHelper().getVisibilityMode()
+  })
 }

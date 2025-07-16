@@ -16,6 +16,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioResult, setAudioResult] = useState<string | null>(null)
   const chunks = useRef<Blob[]>([])
+  const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
     let tooltipHeight = 0
@@ -130,6 +131,24 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           </button>
         </div>
 
+        {/* Visibility Toggle Button */}
+        <div className="flex items-center gap-2">
+          <button
+            className={`bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/70 flex items-center gap-1 ${!isVisible ? 'bg-orange-500/70 hover:bg-orange-500/90' : ''}`}
+            onClick={async () => {
+              const newVisibility = await window.electronAPI.toggleVisibility()
+              setIsVisible(newVisibility)
+            }}
+            type="button"
+          >
+            {isVisible ? (
+              <span>🔒 Hide from Recording</span>
+            ) : (
+              <span>🔓 Show in Recording</span>
+            )}
+          </button>
+        </div>
+
         {/* Question mark with tooltip */}
         <div
           className="relative inline-block"
@@ -202,6 +221,21 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                       </div>
                       <p className="text-[10px] leading-relaxed text-white/70 truncate">
                         Generate a solution based on the current problem.
+                      </p>
+                    </div>
+
+                    {/* Screen Capture Protection */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="truncate">Screen Capture Protection</span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            Button
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-white/70 truncate">
+                        Hide window from screen recordings (Google Meet, OBS, etc).
                       </p>
                     </div>
                   </div>

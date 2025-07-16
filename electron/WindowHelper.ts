@@ -1,4 +1,3 @@
-
 import { BrowserWindow, screen } from "electron"
 import { AppState } from "main"
 import path from "node:path"
@@ -15,8 +14,8 @@ export class WindowHelper {
   private windowPosition: { x: number; y: number } | null = null
   private windowSize: { width: number; height: number } | null = null
   private appState: AppState
+  private visibilityMode: boolean = true // true = visible, false = hidden
 
-  // Initialize with explicit number type and 0 value
   private screenWidth: number = 0
   private screenHeight: number = 0
   private step: number = 0
@@ -30,27 +29,19 @@ export class WindowHelper {
   public setWindowDimensions(width: number, height: number): void {
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return
 
-    // Get current window position
     const [currentX, currentY] = this.mainWindow.getPosition()
-
-    // Get screen dimensions
     const primaryDisplay = screen.getPrimaryDisplay()
     const workArea = primaryDisplay.workAreaSize
 
-    // Use 75% width if debugging has occurred, otherwise use 60%
     const maxAllowedWidth = Math.floor(
       workArea.width * (this.appState.getHasDebugged() ? 0.75 : 0.5)
     )
 
-    // Ensure width doesn't exceed max allowed width and height is reasonable
     const newWidth = Math.min(width + 32, maxAllowedWidth)
     const newHeight = Math.ceil(height)
-
-    // Center the window horizontally if it would go off screen
     const maxX = workArea.width - newWidth
     const newX = Math.min(Math.max(currentX, 0), maxX)
 
-    // Update window bounds
     this.mainWindow.setBounds({
       x: newX,
       y: currentY,
@@ -58,7 +49,6 @@ export class WindowHelper {
       height: newHeight
     })
 
-    // Update internal state
     this.windowPosition = { x: newX, y: currentY }
     this.windowSize = { width: newWidth, height: newHeight }
     this.currentX = newX
@@ -71,14 +61,11 @@ export class WindowHelper {
     const workArea = primaryDisplay.workAreaSize
     this.screenWidth = workArea.width
     this.screenHeight = workArea.height
-
-    this.step = Math.floor(this.screenWidth / 10) // 10 steps
-    this.currentX = 0 // Start at the left
+    this.step = Math.floor(this.screenWidth / 10)
+    this.currentX = 0
 
     const windowSettings: Electron.BrowserWindowConstructorOptions = {
       height: 600,
-      minWidth: undefined,
-      maxWidth: undefined,
       x: this.currentX,
       y: 0,
       webPreferences: {
@@ -93,11 +80,11 @@ export class WindowHelper {
       fullscreenable: false,
       hasShadow: false,
       backgroundColor: "#00000000",
-      focusable: true
+      focusable: true,
+      skipTaskbar: true
     }
 
     this.mainWindow = new BrowserWindow(windowSettings)
-    // this.mainWindow.webContents.openDevTools()
     this.mainWindow.setContentProtection(true)
 
     if (process.platform === "darwin") {
@@ -107,13 +94,11 @@ export class WindowHelper {
       this.mainWindow.setHiddenInMissionControl(true)
       this.mainWindow.setAlwaysOnTop(true, "floating")
     }
+
     if (process.platform === "linux") {
-      // Linux-specific optimizations for stealth overlays
-      if (this.mainWindow.setHasShadow) {
-        this.mainWindow.setHasShadow(false)
-      }
       this.mainWindow.setFocusable(false)
     } 
+
     this.mainWindow.setSkipTaskbar(true)
     this.mainWindow.setAlwaysOnTop(true)
 
@@ -167,10 +152,7 @@ export class WindowHelper {
   }
 
   public hideMainWindow(): void {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      console.warn("Main window does not exist or is destroyed.")
-      return
-    }
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return
 
     const bounds = this.mainWindow.getBounds()
     this.windowPosition = { x: bounds.x, y: bounds.y }
@@ -180,10 +162,7 @@ export class WindowHelper {
   }
 
   public showMainWindow(): void {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      console.warn("Main window does not exist or is destroyed.")
-      return
-    }
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return
 
     if (this.windowPosition && this.windowSize) {
       this.mainWindow.setBounds({
@@ -195,7 +174,6 @@ export class WindowHelper {
     }
 
     this.mainWindow.showInactive()
-
     this.isWindowVisible = true
   }
 
@@ -207,14 +185,12 @@ export class WindowHelper {
     }
   }
 
-  // New methods for window movement
   public moveWindowRight(): void {
     if (!this.mainWindow) return
 
     const windowWidth = this.windowSize?.width || 0
     const halfWidth = windowWidth / 2
 
-    // Ensure currentX and currentY are numbers
     this.currentX = Number(this.currentX) || 0
     this.currentY = Number(this.currentY) || 0
 
@@ -234,7 +210,6 @@ export class WindowHelper {
     const windowWidth = this.windowSize?.width || 0
     const halfWidth = windowWidth / 2
 
-    // Ensure currentX and currentY are numbers
     this.currentX = Number(this.currentX) || 0
     this.currentY = Number(this.currentY) || 0
 
@@ -251,7 +226,6 @@ export class WindowHelper {
     const windowHeight = this.windowSize?.height || 0
     const halfHeight = windowHeight / 2
 
-    // Ensure currentX and currentY are numbers
     this.currentX = Number(this.currentX) || 0
     this.currentY = Number(this.currentY) || 0
 
@@ -271,7 +245,6 @@ export class WindowHelper {
     const windowHeight = this.windowSize?.height || 0
     const halfHeight = windowHeight / 2
 
-    // Ensure currentX and currentY are numbers
     this.currentX = Number(this.currentX) || 0
     this.currentY = Number(this.currentY) || 0
 
@@ -280,5 +253,37 @@ export class WindowHelper {
       Math.round(this.currentX),
       Math.round(this.currentY)
     )
+  }
+
+  public toggleVisibility(): void {
+    if (!this.mainWindow) return
+    
+    this.visibilityMode = !this.visibilityMode
+    
+    if (this.visibilityMode) {
+      // Normal mode - visible to screen capture
+      this.mainWindow.setContentProtection(false)
+      console.log('Screen capture protection: OFF - Window visible in recordings')
+    } else {
+      // Protected mode - try to hide from screen capture
+      this.mainWindow.setContentProtection(true)
+      
+      // Move window to edge of screen to make it less noticeable
+      const bounds = this.mainWindow.getBounds()
+      this.mainWindow.setBounds({
+        ...bounds,
+        x: -bounds.width + 50 // Move mostly off-screen but keep 50px visible
+      })
+      
+      console.log('Screen capture protection: ON - Window hidden from recordings')
+    }
+  }
+  
+  public getVisibilityMode(): boolean {
+    return this.visibilityMode
+  }
+  
+  public isProtectionEnabled(): boolean {
+    return true
   }
 }

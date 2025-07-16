@@ -1,5 +1,4 @@
 "use strict";
-// electron/WindowHelper.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -17,7 +16,7 @@ class WindowHelper {
     windowPosition = null;
     windowSize = null;
     appState;
-    // Initialize with explicit number type and 0 value
+    visibilityMode = true; // true = visible, false = hidden
     screenWidth = 0;
     screenHeight = 0;
     step = 0;
@@ -29,27 +28,20 @@ class WindowHelper {
     setWindowDimensions(width, height) {
         if (!this.mainWindow || this.mainWindow.isDestroyed())
             return;
-        // Get current window position
         const [currentX, currentY] = this.mainWindow.getPosition();
-        // Get screen dimensions
         const primaryDisplay = electron_1.screen.getPrimaryDisplay();
         const workArea = primaryDisplay.workAreaSize;
-        // Use 75% width if debugging has occurred, otherwise use 60%
         const maxAllowedWidth = Math.floor(workArea.width * (this.appState.getHasDebugged() ? 0.75 : 0.5));
-        // Ensure width doesn't exceed max allowed width and height is reasonable
         const newWidth = Math.min(width + 32, maxAllowedWidth);
         const newHeight = Math.ceil(height);
-        // Center the window horizontally if it would go off screen
         const maxX = workArea.width - newWidth;
         const newX = Math.min(Math.max(currentX, 0), maxX);
-        // Update window bounds
         this.mainWindow.setBounds({
             x: newX,
             y: currentY,
             width: newWidth,
             height: newHeight
         });
-        // Update internal state
         this.windowPosition = { x: newX, y: currentY };
         this.windowSize = { width: newWidth, height: newHeight };
         this.currentX = newX;
@@ -61,12 +53,10 @@ class WindowHelper {
         const workArea = primaryDisplay.workAreaSize;
         this.screenWidth = workArea.width;
         this.screenHeight = workArea.height;
-        this.step = Math.floor(this.screenWidth / 10); // 10 steps
-        this.currentX = 0; // Start at the left
+        this.step = Math.floor(this.screenWidth / 10);
+        this.currentX = 0;
         const windowSettings = {
             height: 600,
-            minWidth: undefined,
-            maxWidth: undefined,
             x: this.currentX,
             y: 0,
             webPreferences: {
@@ -81,10 +71,10 @@ class WindowHelper {
             fullscreenable: false,
             hasShadow: false,
             backgroundColor: "#00000000",
-            focusable: true
+            focusable: true,
+            skipTaskbar: true
         };
         this.mainWindow = new electron_1.BrowserWindow(windowSettings);
-        // this.mainWindow.webContents.openDevTools()
         this.mainWindow.setContentProtection(true);
         if (process.platform === "darwin") {
             this.mainWindow.setVisibleOnAllWorkspaces(true, {
@@ -94,10 +84,6 @@ class WindowHelper {
             this.mainWindow.setAlwaysOnTop(true, "floating");
         }
         if (process.platform === "linux") {
-            // Linux-specific optimizations for stealth overlays
-            if (this.mainWindow.setHasShadow) {
-                this.mainWindow.setHasShadow(false);
-            }
             this.mainWindow.setFocusable(false);
         }
         this.mainWindow.setSkipTaskbar(true);
@@ -144,10 +130,8 @@ class WindowHelper {
         return this.isWindowVisible;
     }
     hideMainWindow() {
-        if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-            console.warn("Main window does not exist or is destroyed.");
+        if (!this.mainWindow || this.mainWindow.isDestroyed())
             return;
-        }
         const bounds = this.mainWindow.getBounds();
         this.windowPosition = { x: bounds.x, y: bounds.y };
         this.windowSize = { width: bounds.width, height: bounds.height };
@@ -155,10 +139,8 @@ class WindowHelper {
         this.isWindowVisible = false;
     }
     showMainWindow() {
-        if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-            console.warn("Main window does not exist or is destroyed.");
+        if (!this.mainWindow || this.mainWindow.isDestroyed())
             return;
-        }
         if (this.windowPosition && this.windowSize) {
             this.mainWindow.setBounds({
                 x: this.windowPosition.x,
@@ -178,13 +160,11 @@ class WindowHelper {
             this.showMainWindow();
         }
     }
-    // New methods for window movement
     moveWindowRight() {
         if (!this.mainWindow)
             return;
         const windowWidth = this.windowSize?.width || 0;
         const halfWidth = windowWidth / 2;
-        // Ensure currentX and currentY are numbers
         this.currentX = Number(this.currentX) || 0;
         this.currentY = Number(this.currentY) || 0;
         this.currentX = Math.min(this.screenWidth - halfWidth, this.currentX + this.step);
@@ -195,7 +175,6 @@ class WindowHelper {
             return;
         const windowWidth = this.windowSize?.width || 0;
         const halfWidth = windowWidth / 2;
-        // Ensure currentX and currentY are numbers
         this.currentX = Number(this.currentX) || 0;
         this.currentY = Number(this.currentY) || 0;
         this.currentX = Math.max(-halfWidth, this.currentX - this.step);
@@ -206,7 +185,6 @@ class WindowHelper {
             return;
         const windowHeight = this.windowSize?.height || 0;
         const halfHeight = windowHeight / 2;
-        // Ensure currentX and currentY are numbers
         this.currentX = Number(this.currentX) || 0;
         this.currentY = Number(this.currentY) || 0;
         this.currentY = Math.min(this.screenHeight - halfHeight, this.currentY + this.step);
@@ -217,11 +195,37 @@ class WindowHelper {
             return;
         const windowHeight = this.windowSize?.height || 0;
         const halfHeight = windowHeight / 2;
-        // Ensure currentX and currentY are numbers
         this.currentX = Number(this.currentX) || 0;
         this.currentY = Number(this.currentY) || 0;
         this.currentY = Math.max(-halfHeight, this.currentY - this.step);
         this.mainWindow.setPosition(Math.round(this.currentX), Math.round(this.currentY));
+    }
+    toggleVisibility() {
+        if (!this.mainWindow)
+            return;
+        this.visibilityMode = !this.visibilityMode;
+        if (this.visibilityMode) {
+            // Normal mode - visible to screen capture
+            this.mainWindow.setContentProtection(false);
+            console.log('Screen capture protection: OFF - Window visible in recordings');
+        }
+        else {
+            // Protected mode - try to hide from screen capture
+            this.mainWindow.setContentProtection(true);
+            // Move window to edge of screen to make it less noticeable
+            const bounds = this.mainWindow.getBounds();
+            this.mainWindow.setBounds({
+                ...bounds,
+                x: -bounds.width + 50 // Move mostly off-screen but keep 50px visible
+            });
+            console.log('Screen capture protection: ON - Window hidden from recordings');
+        }
+    }
+    getVisibilityMode() {
+        return this.visibilityMode;
+    }
+    isProtectionEnabled() {
+        return true;
     }
 }
 exports.WindowHelper = WindowHelper;
