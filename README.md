@@ -45,7 +45,7 @@ NODE_ENV=development npm run electron:dev
 
 #### Method 2: Production Mode
 ```bash
-npm run build
+npm run app:build
 ```
 The built app will be in the `release` folder.
 
