@@ -35,7 +35,24 @@ async function analyzeAudioFromBase64(data: string, mimeType: string) {
       mimeType
     }
   } as const
-  const prompt = `You are Wingman AI, a helpful, proactive assistant for any kind of problem or situation (not just coding). Describe this audio clip briefly and suggest a few next actions.`
+  const prompt = `You are Wingman AI, a helpful, proactive assistant for any kind of problem or situation (not just coding). 
+
+Please analyze this audio clip and provide:
+1. A clear transcript of what was said
+2. A brief analysis of the content
+3. 3-5 specific, actionable suggestions or next steps the user could take
+
+Format your response like this:
+**Transcript:** [what was said]
+
+**Analysis:** [brief analysis of the content/situation]
+
+**Suggested Actions:**
+• [Action 1]
+• [Action 2] 
+• [Action 3]
+• [Action 4]
+• [Action 5]`
   const result = await model.generateContent([prompt, audioPart])
   const response = await result.response
   const text = response.text()

@@ -30,6 +30,7 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
   const [chatMessages, setChatMessages] = useState<{role: "user"|"gemini", text: string}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [audioTranscript, setAudioTranscript] = useState<{ text: string; timestamp: number } | null>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
 
   const barRef = useRef<HTMLDivElement>(null)
@@ -184,6 +185,11 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
     setIsChatOpen(!isChatOpen)
   }
 
+  const handleAudioResult = (result: { text: string; timestamp: number }) => {
+    setAudioTranscript(result)
+    // Also add to chat messages for context
+    setChatMessages((msgs) => [...msgs, { role: "gemini", text: `🎤 Audio Analysis: ${result.text}` }])
+  }
 
   return (
     <div
@@ -211,8 +217,35 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
               screenshots={screenshots}
               onTooltipVisibilityChange={handleTooltipVisibilityChange}
               onChatToggle={handleChatToggle}
+              onAudioResult={handleAudioResult}
             />
           </div>
+          
+          {/* Audio Transcript Display */}
+          {audioTranscript && (
+            <div className="mt-4 w-full mx-auto liquid-glass p-4">
+              <div className="glass-content">
+                <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                  🎤 Audio Transcript & Analysis
+                  <button 
+                    onClick={() => setAudioTranscript(null)}
+                    className="text-xs text-white/60 hover:text-white/80 ml-auto"
+                  >
+                    ✕
+                  </button>
+                </h3>
+                <div className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
+                  <div className="text-xs text-gray-200 leading-relaxed whitespace-pre-wrap">
+                    {audioTranscript.text}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    Recorded at {new Date(audioTranscript.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Conditional Chat Interface */}
           {isChatOpen && (
             <div className="mt-4 w-full mx-auto liquid-glass chat-container p-4 flex flex-col">
@@ -221,7 +254,7 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
                 <div className="text-sm text-gray-600 text-center mt-8">
                   💬 Chat with Gemini 2.5 Flash
                   <br />
-                  <span className="text-xs text-gray-500">Take a screenshot (Cmd+H) for automatic analysis</span>
+                  <span className="text-xs text-gray-500">Record audio or ask questions for AI assistance</span>
                 </div>
               ) : (
                 chatMessages.map((msg, idx) => (

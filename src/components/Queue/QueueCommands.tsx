@@ -1,25 +1,24 @@
 import React, { useState, useEffect, useRef } from "react"
 import { IoLogOutOutline } from "react-icons/io5"
-import { Dialog, DialogContent, DialogClose } from "../ui/dialog"
 
 interface QueueCommandsProps {
   onTooltipVisibilityChange: (visible: boolean, height: number) => void
   screenshots: Array<{ path: string; preview: string }>
   onChatToggle: () => void
+  onAudioResult: (result: { text: string; timestamp: number }) => void
 }
 
 const QueueCommands: React.FC<QueueCommandsProps> = ({
   onTooltipVisibilityChange,
   screenshots: _screenshots,
-  onChatToggle
+  onChatToggle,
+  onAudioResult
 }) => {
   const [isTooltipVisible, setIsTooltipVisible] = useState(false)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
-  const [audioResult, setAudioResult] = useState<string | null>(null)
   const chunks = useRef<Blob[]>([])
-  // Remove all chat-related state, handlers, and the Dialog overlay from this file.
 
   useEffect(() => {
     let tooltipHeight = 0
@@ -54,10 +53,10 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
             const base64Data = (reader.result as string).split(',')[1]
             try {
               const result = await window.electronAPI.analyzeAudioFromBase64(base64Data, blob.type)
-              setAudioResult(result.text)
+              onAudioResult(result)
             } catch (err) {
               console.error('Audio analysis error:', err)
-              setAudioResult('Audio analysis failed.')
+              onAudioResult({ text: 'Audio analysis failed: ' + String(err), timestamp: Date.now() })
             }
           }
           reader.readAsDataURL(blob)
@@ -67,7 +66,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         setIsRecording(true)
       } catch (err) {
         console.error('Recording error:', err)
-        setAudioResult('Could not start recording.')
+        onAudioResult({ text: 'Could not start recording: ' + String(err), timestamp: Date.now() })
       }
     } else {
       // Stop recording
@@ -77,13 +76,9 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     }
   }
 
-  // Remove handleChatSend function
-
   return (
     <div className="w-fit">
       <div className="text-xs text-white/90 liquid-glass-bar py-1 px-4 flex items-center justify-center gap-4 draggable-area">
-        {/* Removed show/hide and screenshot controls for web */}
-
         {/* Voice Recording Button */}
         <div className="flex items-center gap-2">
           <button
@@ -127,14 +122,6 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           <IoLogOutOutline className="w-4 h-4" />
         </button>
       </div>
-      {/* Audio Result Display */}
-      {audioResult && (
-        <div className="mt-2 p-2 bg-white/10 rounded text-white text-xs max-w-md">
-          <span className="font-semibold">Audio Result:</span> {audioResult}
-        </div>
-      )}
-      {/* Chat Dialog Overlay */}
-      {/* Remove the Dialog component */}
     </div>
   )
 }
