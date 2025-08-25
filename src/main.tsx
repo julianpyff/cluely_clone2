@@ -1,5 +1,6 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
+import "./web/electron-shim"
 import App from "./App"
 import "./index.css"
 
