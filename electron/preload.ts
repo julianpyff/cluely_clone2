@@ -32,7 +32,7 @@ interface ElectronAPI {
   moveWindowDown: () => Promise<void>
   analyzeAudioFromBase64: (data: string, mimeType: string) => Promise<{ text: string; timestamp: number }>
   analyzeAudioFile: (path: string) => Promise<{ text: string; timestamp: number }>
-  analyzeImageFile: (path: string) => Promise<void>
+  analyzeImageFile: (path: string) => Promise<{ text: string; timestamp: number }>
   quitApp: () => Promise<void>
   invoke: (channel: string, ...args: any[]) => Promise<any>
 }
@@ -104,11 +104,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   onDebugSuccess: (callback: (data: any) => void) => {
-    ipcRenderer.on("debug-success", (_event, data) => callback(data))
+    const subscription = (_event: any, data: any) => callback(data)
+    ipcRenderer.on("debug-success", subscription)
     return () => {
-      ipcRenderer.removeListener("debug-success", (_event, data) =>
-        callback(data)
-      )
+      ipcRenderer.removeListener("debug-success", subscription)
     }
   },
   onDebugError: (callback: (error: string) => void) => {

@@ -68,19 +68,42 @@ const App: React.FC = () => {
 
   // Effect for height monitoring
   useEffect(() => {
-    const cleanup = window.electronAPI.onResetView(() => {
-      console.log("Received 'reset-view' message from main process.")
-      queryClient.invalidateQueries(["screenshots"])
-      queryClient.invalidateQueries(["problem_statement"])
-      queryClient.invalidateQueries(["solution"])
-      queryClient.invalidateQueries(["new_solution"])
-      setView("queue")
+    if (!containerRef.current) return
+
+    const updateHeight = () => {
+      if (!containerRef.current) return
+      const height = containerRef.current.scrollHeight
+      const width = containerRef.current.scrollWidth
+      window.electronAPI?.updateContentDimensions({ width, height })
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeight()
+    })
+
+    // Initial height update
+    updateHeight()
+
+    // Observe for changes
+    resizeObserver.observe(containerRef.current)
+
+    // Also update height when view changes
+    const mutationObserver = new MutationObserver(() => {
+      updateHeight()
+    })
+
+    mutationObserver.observe(containerRef.current, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true
     })
 
     return () => {
-      cleanup()
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
     }
-  }, [])
+  }, [view]) // Re-run when view changes
 
   useEffect(() => {
     if (!containerRef.current) return

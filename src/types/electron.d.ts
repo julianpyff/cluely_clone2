@@ -24,6 +24,7 @@ export interface ElectronAPI {
   moveWindowDown: () => Promise<void>
   analyzeAudioFromBase64: (data: string, mimeType: string) => Promise<{ text: string; timestamp: number }>
   analyzeAudioFile: (path: string) => Promise<{ text: string; timestamp: number }>
+  analyzeImageFile: (path: string) => Promise<{ text: string; timestamp: number }>
   quitApp: () => Promise<void>
   invoke: (channel: string, ...args: any[]) => Promise<any>
 }
