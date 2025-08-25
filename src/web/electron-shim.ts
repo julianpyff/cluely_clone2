@@ -42,6 +42,26 @@ async function analyzeAudioFromBase64(data: string, mimeType: string) {
   return { text, timestamp: Date.now() }
 }
 
+async function coachAnalyzeAudioFromBase64(data: string, mimeType: string, playbookText: string) {
+  const model = getGeminiClient()
+  if (!model) {
+    throw new Error("Gemini not configured")
+  }
+  const audioPart = {
+    inlineData: {
+      data,
+      mimeType
+    }
+  } as const
+  const prompt = `You are an expert sales coach. You will receive short live audio segments from an ongoing sales call and a sales playbook.
+
+Sales Playbook (verbatim):\n\n${playbookText.slice(0, 120000)}\n\nTask: For the given audio segment, output 2-3 concise, actionable coaching tips the rep can apply immediately. Reference relevant playbook guidance briefly (quote or section names if present). Keep total under 60 words. Plain text only.`
+  const result = await model.generateContent([prompt, audioPart])
+  const response = await result.response
+  const text = response.text()
+  return { text, timestamp: Date.now() }
+}
+
 async function chatWithGemini(message: string) {
   const model = getGeminiClient()
   if (!model) {
@@ -83,6 +103,7 @@ async function chatWithGemini(message: string) {
 
   // Audio-only capabilities
   analyzeAudioFromBase64,
+  coachAnalyzeAudioFromBase64,
   analyzeAudioFile: async (_path: string) => {
     throw new Error("analyzeAudioFile is not supported in web")
   },

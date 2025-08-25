@@ -6,12 +6,18 @@ interface QueueCommandsProps {
   onTooltipVisibilityChange: (visible: boolean, height: number) => void
   screenshots: Array<{ path: string; preview: string }>
   onChatToggle: () => void
+  coachEnabled: boolean
+  setCoachEnabled: (v: boolean) => void
+  onPlaybookUpload: (file: File) => void
 }
 
 const QueueCommands: React.FC<QueueCommandsProps> = ({
   onTooltipVisibilityChange,
   screenshots: _screenshots,
-  onChatToggle
+  onChatToggle,
+  coachEnabled,
+  setCoachEnabled,
+  onPlaybookUpload
 }) => {
   const [isTooltipVisible, setIsTooltipVisible] = useState(false)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -104,6 +110,34 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           >
             💬 Chat
           </button>
+        </div>
+
+        {/* Coach toggle */}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1 text-[11px] leading-none text-white/80">
+            <input
+              type="checkbox"
+              checked={coachEnabled}
+              onChange={(e) => setCoachEnabled(e.target.checked)}
+            />
+            Coach
+          </label>
+        </div>
+
+        {/* Playbook upload */}
+        <div className="flex items-center gap-2">
+          <label className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/70 cursor-pointer">
+            Upload Playbook
+            <input
+              type="file"
+              accept=".txt,.md,.pdf,.doc,.docx,.rtf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) onPlaybookUpload(file)
+              }}
+            />
+          </label>
         </div>
 
         {/* Add this button in the main button row, before the separator and sign out */}

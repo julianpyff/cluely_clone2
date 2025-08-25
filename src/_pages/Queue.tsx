@@ -9,6 +9,7 @@ import {
   ToastMessage
 } from "../components/ui/toast"
 import QueueCommands from "../components/Queue/QueueCommands"
+import SalesCoach from "../components/Coach/SalesCoach"
 
 interface QueueProps {
   setView: React.Dispatch<React.SetStateAction<"queue" | "solutions" | "debug">>
@@ -31,6 +32,8 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
   const [chatLoading, setChatLoading] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const chatInputRef = useRef<HTMLInputElement>(null)
+  const [coachEnabled, setCoachEnabled] = useState(false)
+  const [playbookText, setPlaybookText] = useState("")
 
   const barRef = useRef<HTMLDivElement>(null)
 
@@ -182,6 +185,11 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
     setIsChatOpen(!isChatOpen)
   }
 
+  const handlePlaybookUpload = async (file: File) => {
+    const text = await file.text()
+    setPlaybookText(text)
+  }
+
 
   return (
     <div
@@ -209,8 +217,12 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
               screenshots={screenshots}
               onTooltipVisibilityChange={handleTooltipVisibilityChange}
               onChatToggle={handleChatToggle}
+              coachEnabled={coachEnabled}
+              setCoachEnabled={setCoachEnabled}
+              onPlaybookUpload={handlePlaybookUpload}
             />
           </div>
+          <SalesCoach isEnabled={coachEnabled && !!playbookText} playbookText={playbookText} />
           {/* Conditional Chat Interface */}
           {isChatOpen && (
             <div className="mt-4 w-full mx-auto liquid-glass chat-container p-4 flex flex-col">
