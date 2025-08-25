@@ -86,15 +86,17 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
     if (!chatInput.trim()) return
     setChatMessages((msgs) => [...msgs, { role: "user", text: chatInput }])
     setChatLoading(true)
+    const currentInput = chatInput
     setChatInput("")
     try {
-      const response = await window.electronAPI.invoke("gemini-chat", chatInput)
+      const response = await window.electronAPI.invoke("gemini-chat", currentInput)
       setChatMessages((msgs) => [...msgs, { role: "gemini", text: response }])
     } catch (err) {
+      console.error('Chat error:', err)
       setChatMessages((msgs) => [...msgs, { role: "gemini", text: "Error: " + String(err) }])
     } finally {
       setChatLoading(false)
-      chatInputRef.current?.focus()
+      setTimeout(() => chatInputRef.current?.focus(), 100)
     }
   }
 

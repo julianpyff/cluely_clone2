@@ -47,6 +47,8 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         recorder.onstop = async () => {
           const blob = new Blob(chunks.current, { type: chunks.current[0]?.type || 'audio/webm' })
           chunks.current = []
+          // Stop all tracks to release microphone
+          stream.getTracks().forEach(track => track.stop())
           const reader = new FileReader()
           reader.onloadend = async () => {
             const base64Data = (reader.result as string).split(',')[1]
@@ -54,6 +56,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               const result = await window.electronAPI.analyzeAudioFromBase64(base64Data, blob.type)
               setAudioResult(result.text)
             } catch (err) {
+              console.error('Audio analysis error:', err)
               setAudioResult('Audio analysis failed.')
             }
           }
@@ -63,6 +66,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         recorder.start()
         setIsRecording(true)
       } catch (err) {
+        console.error('Recording error:', err)
         setAudioResult('Could not start recording.')
       }
     } else {

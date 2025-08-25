@@ -10,14 +10,14 @@ const noop = async () => {}
 const onNoop = (_cb: any): Unsubscribe => () => {}
 
 function getGeminiClient() {
-  const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY
+  const apiKey = import.meta.env?.VITE_GEMINI_API_KEY
   if (!apiKey) {
     console.warn("VITE_GEMINI_API_KEY not set; Gemini features disabled.")
     return null
   }
   try {
     const genAI = new GoogleGenerativeAI(apiKey)
-    return genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    return genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
   } catch (err) {
     console.error("Failed to initialize GoogleGenerativeAI:", err)
     return null
